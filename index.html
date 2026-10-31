@@ -45,6 +45,9 @@ main{max-width:960px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
 .tagbox input:focus{outline:none}
 .chip{display:inline-flex;align-items:center;gap:2px;background:#f3e7d8;color:var(--accent);border-radius:15px;padding:3px 4px 3px 11px;font-size:14px}
 .chip button{border:none;min-height:0;padding:0 7px;background:none;font-size:18px;line-height:1;color:var(--accent)}
+.seg{display:flex;gap:6px;margin-bottom:10px}
+.seg button{flex:1;white-space:nowrap;padding:4px 6px;font-size:14px}
+.seg button.on{background:var(--accent);color:#fff}
 .sugg{margin-top:6px}
 .sugg .btag{background:#fff;border:1px dashed var(--accent);font-size:13px;padding:3px 10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px}
@@ -53,7 +56,7 @@ main{max-width:960px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
 .cover{width:72px;height:104px;flex:none;border-radius:5px;background:#eee center/cover no-repeat;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--sub)}
 .meta{min-width:0;flex:1;font-size:13px}
 .meta .t{font-weight:bold;font-size:15px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
-.meta .s{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta .s{color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 .stars{color:#e0a100;letter-spacing:1px;font-size:16px}
 .tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:10px;padding:0 7px;margin-right:4px;color:var(--sub)}
 .ghead{grid-column:1/-1;font-weight:bold;color:var(--accent);border-bottom:2px solid var(--line);padding:4px 2px;margin-top:6px}
@@ -102,26 +105,27 @@ h4{margin:18px 0 6px;font-size:13px;color:var(--accent)}
     <span id="cloud" title="設定を開く">☁ 未接続</span>
     <button id="setBtn" class="icon" aria-label="設定">⚙</button>
   </div>
-  <input id="q" type="search" placeholder="🔍 題名・著者・感想で検索">
+  <input id="q" type="search" placeholder="🔍 題名・作者・原作・絵・感想で検索">
 </header>
 <main>
+  <div class="seg" id="kinds"></div>
   <div class="filters">
     <select id="fGenre"><option value="">全ジャンル</option></select>
     <select id="fTag"><option value="">全タグ</option></select>
     <select id="fStatus"><option value="">全状態</option><option>未読</option><option>読書中</option><option>読了</option></select>
     <select id="sort">
       <option value="created">登録順</option>
-      <option value="read">読了日順</option>
+      <option value="read">完了日順</option>
       <option value="rating">評価順</option>
       <option value="title">題名順(50音)</option>
-      <option value="author">著者順(50音)</option>
+      <option value="author">作者順(50音)</option>
     </select>
   </div>
   <div id="yomiWarn" class="hint" style="margin-bottom:8px"></div>
   <div id="list" class="grid"></div>
   <p class="hint" style="text-align:center;margin-top:28px"><a href="privacy.html" style="color:inherit">プライバシーポリシー</a></p>
 </main>
-<button id="addBtn" class="fab" aria-label="本を追加">＋</button>
+<button id="addBtn" class="fab" aria-label="追加">＋</button>
 
 <!-- 詳細(読む画面) -->
 <dialog id="viewDlg">
@@ -137,7 +141,7 @@ h4{margin:18px 0 6px;font-size:13px;color:var(--accent)}
       </div>
     </div>
     <h4>感想</h4><p class="note-text" id="vNote"></p>
-    <h4>あらすじ</h4><p class="note-text" id="vSyn"></p>
+    <h4 id="vSynLabel">あらすじ</h4><p class="note-text" id="vSyn"></p>
     <div class="actions"><button id="vClose">閉じる</button><button id="vEdit" class="primary">編集</button></div>
   </div>
 </dialog>
@@ -170,12 +174,20 @@ h4{margin:18px 0 6px;font-size:13px;color:var(--accent)}
 <!-- 本の編集 -->
 <dialog id="dlg">
   <form id="form" method="dialog" class="pad">
-    <label>ISBN または 題名で検索して自動入力</label>
-    <div style="display:flex;gap:6px">
-      <input id="lookup" placeholder="ISBN(978...)または題名">
-      <button type="button" id="lookupBtn">検索</button>
+    <div class="seg" id="kindSeg">
+      <button type="button" data-kind="book">📖 本</button>
+      <button type="button" data-kind="video">🎬 映像</button>
+      <button type="button" data-kind="game">🎮 ゲーム</button>
     </div>
-    <div id="results" class="hint"></div>
+    <div id="lookupBox">
+      <label>ISBN または 題名で検索して自動入力</label>
+      <div style="display:flex;gap:6px">
+        <input id="lookup" placeholder="ISBN(978...)または題名">
+        <button type="button" id="lookupBtn">検索</button>
+      </div>
+      <div id="results" class="hint"></div>
+    </div>
+    <p id="noLookup" class="hint" style="display:none">映像作品・ゲームは、題名などを手入力してください。画像は「画像を選ぶ」から入れられます。</p>
 
     <div class="top" style="margin-top:10px">
       <div>
@@ -185,31 +197,33 @@ h4{margin:18px 0 6px;font-size:13px;color:var(--accent)}
       </div>
       <div style="flex:1">
         <label>題名 *</label><input id="title" required>
-        <label>作者</label><input id="author">
+        <label id="creatorLabel">作者</label><input id="author">
         <details id="yomiBox"><summary>50音順用のよみ(ひらがな)</summary>
           <label style="margin-top:0">題名のよみ</label><input id="titleYomi" placeholder="例:ぼっちゃん">
-          <label>作者のよみ</label><input id="authorYomi" placeholder="例:なつめそうせき">
+          <label id="creatorYomiLabel">作者のよみ</label><input id="authorYomi" placeholder="例:なつめそうせき">
         </details>
-        <label>イラストレーター(小説など)</label><input id="illustrator">
+        <div id="origBox"><label id="origLabel">原作者</label><input id="original" placeholder="なければ空欄"></div>
+        <div id="illBox"><label>イラストレーター(小説など)</label><input id="illustrator"></div>
+        <div id="platBox" style="display:none"><label id="platLabel">プラットフォーム</label><input id="platform" list="platforms"><datalist id="platforms"></datalist></div>
       </div>
     </div>
     <label>表紙画像URL(画像を選んだ場合は空欄)</label><input id="cover" placeholder="自動取得されます">
     <div class="row">
       <div><label>ジャンル(手入力)</label><input id="genre" list="genres"><datalist id="genres"></datalist></div>
-      <div><label>ISBN</label><input id="isbn"></div>
+      <div id="isbnBox"><label>ISBN</label><input id="isbn"></div>
     </div>
     <label>タグ(細かい分類。Enterか「,」で追加)</label>
     <div class="tagbox"><span id="tagChips"></span><input id="tagInput" placeholder="例:ミステリ、泣ける、再読したい" enterkeyhint="done"></div>
     <div id="tagSuggest" class="sugg"></div>
     <div class="row">
-      <div><label>購入日(不明なら空欄)</label><input type="date" id="purchase"></div>
-      <div><label>読了日(不明なら空欄)</label><input type="date" id="read"></div>
+      <div id="purchaseBox"><label>購入日(不明なら空欄)</label><input type="date" id="purchase"></div>
+      <div><label id="readLabel">読了日(不明なら空欄)</label><input type="date" id="read"></div>
     </div>
     <label>状態</label>
     <select id="status"><option>未読</option><option>読書中</option><option selected>読了</option></select>
     <label>評価</label>
     <div class="star-input" id="stars"></div>
-    <label>あらすじ</label><textarea id="synopsis" rows="4"></textarea>
+    <label id="synLabel">あらすじ</label><textarea id="synopsis" rows="4"></textarea>
     <label>感想</label><textarea id="note" rows="6"></textarea>
     <div class="actions">
       <button type="button" class="danger" id="delBtn">削除</button>
@@ -234,6 +248,29 @@ const live = () => books.filter(b => !b.deleted);
 const coverSrc = b => b.cover || b.thumb || "";
 let curTags = [], editingId = null, viewId = null, rating = 0, curThumb = "", pendingFull = "";
 
+/* ---------- 種類(本・映像・ゲーム) ---------- */
+const KINDS = {
+  book:  { icon: "📖", name: "本",     creator: "作者",         statuses: ["未読", "読書中", "読了"],         doneDate: "読了日",   hasPurchase: true,  syn: "あらすじ",       platform: null, original: "原作者(原作がある漫画・小説など)" },
+  video: { icon: "🎬", name: "映像",   creator: "監督・制作",   statuses: ["未視聴", "視聴中", "視聴済"],     doneDate: "視聴日",   hasPurchase: false, syn: "あらすじ",       platform: { label: "視聴した場所(配信サービス・劇場など)", ph: "例:Netflix、劇場" }, original: "原作(原作者・作品名など)" },
+  game:  { icon: "🎮", name: "ゲーム", creator: "開発・販売元", statuses: ["未プレイ", "プレイ中", "クリア済"], doneDate: "クリア日", hasPurchase: true,  syn: "あらすじ・紹介", platform: { label: "プラットフォーム", ph: "例:Switch、PS5、Steam" } },
+};
+const PLATFORM_DEFAULTS = { video: ["Netflix", "Prime Video", "Disney+", "U-NEXT", "Hulu", "劇場", "テレビ", "DVD/Blu-ray"], game: ["Switch", "PS5", "PS4", "Steam", "スマホ", "PC"] };
+const KINDKEY = "reading-notes-kind";
+let curKind = "";
+try { const k = localStorage.getItem(KINDKEY); if (k && KINDS[k]) curKind = k; } catch (e) {}
+const kindOf = b => KINDS[b.kind] ? b.kind : "book";
+const statusIdx = b => Math.max(0, KINDS[kindOf(b)].statuses.indexOf(b.status));
+function subline(b) {
+  const k = kindOf(b);
+  return [b.author, KINDS[k].original && b.original ? "原作: " + b.original : "", k === "book" && b.illustrator ? "絵: " + b.illustrator : "", k !== "book" ? b.platform : ""].filter(Boolean).join(" / ");
+}
+function datesText(b) {
+  const K = KINDS[kindOf(b)], parts = [];
+  if (K.hasPurchase) parts.push(`購入: ${b.purchase || "不明"}`);
+  parts.push(`${K.doneDate}: ${statusIdx(b) === 2 ? (b.read || "不明") : "-"}`);
+  return parts.join(" ／ ");
+}
+
 /* ---------- 50音順ヘルパー ---------- */
 const toHira = s => (s || "").replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 function sortKey(b, f) {
@@ -252,7 +289,16 @@ function groupOf(k) {
 
 /* ---------- 一覧 ---------- */
 function render() {
-  const all = live();
+  const everyone = live();
+  const all = everyone.filter(b => !curKind || kindOf(b) === curKind);
+  const cnt = { "": everyone.length, book: 0, video: 0, game: 0 };
+  everyone.forEach(b => cnt[kindOf(b)]++);
+  $("kinds").innerHTML = [["", "すべて"], ["book", "📖 本"], ["video", "🎬 映像"], ["game", "🎮 ゲーム"]]
+    .map(([k, l]) => `<button type="button" data-kind="${k}" class="${k === curKind ? "on" : ""}">${l} ${cnt[k]}</button>`).join("");
+  const stNames = curKind ? KINDS[curKind].statuses : ["未着手", "進行中", "完了"];
+  const curSt = $("fStatus").value;
+  $("fStatus").innerHTML = '<option value="">全状態</option>' + stNames.map((n, i) => `<option value="${i}">${n}</option>`).join("");
+  $("fStatus").value = curSt;
   const genres = [...new Set(all.map(b => b.genre).filter(Boolean))].sort();
   const cur = $("fGenre").value;
   $("fGenre").innerHTML = '<option value="">全ジャンル</option>' + genres.map(g => `<option>${esc(g)}</option>`).join("");
@@ -268,10 +314,10 @@ function render() {
 
   const q = $("q").value.trim().toLowerCase();
   let list = all.filter(b =>
-    (!q || [b.title, b.author, b.illustrator, b.note, b.synopsis, (b.tags || []).join(" ")].join(" ").toLowerCase().includes(q)) &&
+    (!q || [b.title, b.titleYomi, b.author, b.authorYomi, b.original, b.illustrator, b.platform, b.note, b.synopsis, (b.tags || []).join(" ")].join(" ").toLowerCase().includes(q)) &&
     (!$("fGenre").value || b.genre === $("fGenre").value) &&
     (!$("fTag").value || (b.tags || []).includes($("fTag").value)) &&
-    (!$("fStatus").value || b.status === $("fStatus").value));
+    ($("fStatus").value === "" || statusIdx(b) === +$("fStatus").value));
   const s = $("sort").value;
   list.sort((a, b) =>
     s === "read" ? (b.read || "").localeCompare(a.read || "") :
@@ -283,7 +329,7 @@ function render() {
   const grouped = s === "title" || s === "author";
   let lastGroup = null;
   const missing = grouped ? list.filter(b => !b[s + "Yomi"] && /[一-龥]/.test(b[s] || "")).length : 0;
-  $("yomiWarn").textContent = missing ? `※ よみが未入力の漢字の${s === "title" ? "題名" : "著者"}が${missing}件あります(「その他」にまとまります)。編集画面でよみを入力すると50音順に並びます。` : "";
+  $("yomiWarn").textContent = missing ? `※ よみが未入力の漢字の${s === "title" ? "題名" : "作者"}が${missing}件あります(「その他」にまとまります)。編集画面でよみを入力すると50音順に並びます。` : "";
 
   $("list").innerHTML = list.length ? list.map(b => {
     let head = "";
@@ -293,16 +339,22 @@ function render() {
     <div class="card" data-id="${b.id}">
       <div class="cover" style="${src ? `background-image:url('${esc(src)}')` : ""}">${src ? "" : "表紙なし"}</div>
       <div class="meta">
-        <div class="t">${esc(b.title)}</div>
-        <div class="s">${esc(b.author)}${b.illustrator ? " / 絵: " + esc(b.illustrator) : ""}</div>
+        <div class="t">${curKind ? "" : KINDS[kindOf(b)].icon + " "}${esc(b.title)}</div>
+        <div class="s">${esc(subline(b))}</div>
         <div class="stars">${"★".repeat(b.rating || 0)}${"☆".repeat(5 - (b.rating || 0))}</div>
         <div>${b.genre ? `<span class="tag">${esc(b.genre)}</span>` : ""}<span class="tag">${esc(b.status)}</span></div>
         ${(b.tags || []).length ? `<div>${tagHtml(b.tags)}</div>` : ""}
-        <div class="s">購入: ${b.purchase || "不明"} ／ 読了: ${b.status === "読了" ? (b.read || "不明") : "-"}</div>
+        <div class="s">${esc(datesText(b))}</div>
       </div>
-    </div>`; }).join("") : '<div class="empty" style="grid-column:1/-1">本がありません。「＋ 追加」から登録しましょう。</div>';
+    </div>`; }).join("") : '<div class="empty" style="grid-column:1/-1">まだありません。右下の「＋」から登録しましょう。</div>';
 }
 ["q","fGenre","fTag","fStatus","sort"].forEach(id => $(id).addEventListener("input", render));
+$("kinds").addEventListener("click", e => {
+  const x = e.target.closest("button"); if (!x) return;
+  curKind = x.dataset.kind;
+  try { localStorage.setItem(KINDKEY, curKind); } catch (err) {}
+  render();
+});
 const tagHtml = tags => (tags || []).map(t => `<span class="btag" data-tag="${esc(t)}">#${esc(t)}</span>`).join("");
 function filterByTag(t) { $("fTag").value = t; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 $("list").addEventListener("click", e => {
@@ -329,10 +381,12 @@ function openView(id) {
   $("vCover").style.backgroundImage = src ? `url('${src}')` : "";
   $("vCover").textContent = src ? "" : "表紙なし";
   $("vTitle").textContent = b.title || "";
-  $("vAuthor").textContent = (b.author || "") + (b.illustrator ? " / 絵: " + b.illustrator : "");
+  const K = KINDS[kindOf(b)];
+  $("vAuthor").textContent = subline(b);
+  $("vSynLabel").textContent = K.syn;
   $("vStars").textContent = "★".repeat(r) + "☆".repeat(5 - r);
-  $("vTags").innerHTML = (b.genre ? `<span class="tag">${esc(b.genre)}</span>` : "") + `<span class="tag">${esc(b.status)}</span>` + tagHtml(b.tags);
-  $("vDates").textContent = `購入: ${b.purchase || "不明"} ／ 読了: ${b.status === "読了" ? (b.read || "不明") : "-"}`;
+  $("vTags").innerHTML = `<span class="tag">${K.icon} ${K.name}</span>` + (b.genre ? `<span class="tag">${esc(b.genre)}</span>` : "") + `<span class="tag">${esc(b.status)}</span>` + tagHtml(b.tags);
+  $("vDates").textContent = datesText(b);
   $("vNote").textContent = b.note || "(まだありません)";
   $("vSyn").textContent = b.synopsis || "(なし)";
   $("viewDlg").showModal(); $("viewDlg").scrollTop = 0;
@@ -343,7 +397,7 @@ $("vEdit").onclick = () => { $("viewDlg").close(); openDlg(viewId); };
 ["viewDlg", "setDlg"].forEach(id => $(id).addEventListener("click", e => { if (e.target.id === id) $(id).close(); }));
 
 /* ---------- 編集ダイアログ ---------- */
-const F = ["title","titleYomi","author","authorYomi","illustrator","genre","isbn","cover","purchase","read","status","synopsis","note"];
+const F = ["title","titleYomi","author","authorYomi","original","illustrator","platform","genre","isbn","cover","purchase","read","status","synopsis","note"];
 function setCoverPrev() {
   const u = $("cover").value || curThumb;
   $("coverPrev").style.backgroundImage = u ? `url('${u}')` : "";
@@ -374,10 +428,46 @@ $("tagInput").addEventListener("blur", commitTagInput);
 $("tagChips").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { curTags.splice(+b.dataset.i, 1); drawTags(); } });
 $("tagSuggest").addEventListener("click", e => { const t = e.target.closest(".btag"); if (t) addTags(t.dataset.tag); });
 
+let editKind = "book";
+function buildKindUI(kind) {
+  editKind = kind;
+  const K = KINDS[kind], isBook = kind === "book";
+  document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("on", x.dataset.kind === kind));
+  $("creatorLabel").textContent = K.creator;
+  $("cover").placeholder = isBook ? "自動取得されます" : "画像のURL(なければ空欄)";
+  $("creatorYomiLabel").textContent = K.creator + "のよみ";
+  $("origBox").style.display = K.original ? "" : "none";
+  if (K.original) $("origLabel").textContent = K.original;
+  $("lookupBox").style.display = isBook ? "" : "none";
+  $("noLookup").style.display = isBook ? "none" : "";
+  $("illBox").style.display = isBook ? "" : "none";
+  $("isbnBox").style.display = isBook ? "" : "none";
+  $("platBox").style.display = K.platform ? "" : "none";
+  if (K.platform) {
+    $("platLabel").textContent = K.platform.label;
+    $("platform").placeholder = K.platform.ph;
+    const used = live().filter(b => kindOf(b) === kind).map(b => b.platform).filter(Boolean);
+    $("platforms").innerHTML = [...new Set([...(PLATFORM_DEFAULTS[kind] || []), ...used])].map(x => `<option value="${esc(x)}">`).join("");
+  }
+  $("purchaseBox").style.display = K.hasPurchase ? "" : "none";
+  $("readLabel").textContent = K.doneDate + "(不明なら空欄)";
+  $("synLabel").textContent = K.syn;
+  $("status").innerHTML = K.statuses.map(s => `<option>${s}</option>`).join("");
+  $("genres").innerHTML = [...new Set(live().filter(b => kindOf(b) === kind).map(b => b.genre).filter(Boolean))].sort().map(g => `<option value="${esc(g)}">`).join("");
+}
+$("kindSeg").addEventListener("click", e => {
+  const x = e.target.closest("button"); if (!x) return;
+  const i = $("status").selectedIndex;
+  buildKindUI(x.dataset.kind);
+  $("status").selectedIndex = Math.max(0, i);
+});
 function openDlg(id) {
   editingId = id || null;
-  const b = id ? books.find(x => x.id === id) : { status: "読了" };
-  F.forEach(k => $(k).value = b[k] || (k === "status" ? "読了" : ""));
+  const kind = id ? kindOf(books.find(x => x.id === id)) : (curKind || "book");
+  buildKindUI(kind);
+  const b = id ? books.find(x => x.id === id) : { status: KINDS[kind].statuses[2] };
+  F.forEach(k => $(k).value = b[k] || "");
+  if ($("status").selectedIndex < 0) $("status").selectedIndex = 0;
   curThumb = b.thumb || ""; pendingFull = b.pendingFull || "";
   rating = b.rating || 0; drawStars(); setCoverPrev();
   curTags = [...(b.tags || [])]; $("tagInput").value = ""; drawTags();
@@ -393,6 +483,10 @@ $("form").addEventListener("submit", e => {
   e.preventDefault();
   commitTagInput();
   const data = {}; F.forEach(k => data[k] = $(k).value.trim()); data.rating = rating; data.tags = [...curTags];
+  data.kind = editKind;
+  if (editKind !== "book") { data.illustrator = ""; data.isbn = ""; } else { data.platform = ""; }
+  if (!KINDS[editKind].hasPurchase) data.purchase = "";
+  if (!KINDS[editKind].original) data.original = "";
   if (data.cover) { data.thumb = ""; data.pendingFull = ""; } else { data.thumb = curThumb; data.pendingFull = pendingFull; }
   const now = Date.now();
   if (editingId) {
